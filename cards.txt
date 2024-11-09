@@ -1,1 +1,2 @@
-Date: 2024-11-09-01, Card: 1, Access: Yes
+Date: 2024-11-09-18:56, Card: 1, Access: Yes
+Date: 2024-11-09-18:56, Card: 2, Access: No

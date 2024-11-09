@@ -7,6 +7,74 @@
 #include "main.h"
 #include "SafeInput.h"
 
+void saveCardsToFile(const SystemState* state) {
+    FILE* file = fopen("cards.txt", "w");
+    if (file == NULL) {
+        printf("Error: Unable to open file for writing.\n");
+        return;
+    }
+
+    for (int i = 0; i < state->cardCount; i++) {
+        fprintf(file, "Date: %s, Card: %d, Access: %s\n",
+                state->cards[i].dateAdded,
+                state->cards[i].cardNumber,
+                state->cards[i].hasAccess ? "Yes" : "No");
+    }
+
+    fclose(file);
+}
+
+
+void loadCardsFromFile(SystemState* state) {
+    FILE* file = fopen("cards.txt", "r");
+    if (file == NULL) {
+        // It's okay if the file doesn't exist yet
+        state->cardCount = 0;
+        state->cards = NULL;
+        return;
+    }
+
+    // Initialize card count
+    state->cardCount = 0;
+    state->cards = NULL;
+
+    // Variables for parsing
+    char line[256];
+    int cardNumber;
+    char accessStr[4];
+    char dateStr[20];
+
+    // Read each line
+    while (fgets(line, sizeof(line), file)) {
+        // Parse the line according to the format: "Date: %s, Card: %d, Access: %s"
+        if (sscanf(line, "Date: %[^,], Card: %d, Access: %s\n",
+                   dateStr, &cardNumber, accessStr) == 3) {
+            
+            // Reallocate memory for the new card
+            Card* temp = realloc(state->cards, (state->cardCount + 1) * sizeof(Card));
+            if (temp == NULL) {
+                printf("Error: Memory allocation failed.\n");
+                fclose(file);
+                return;
+            }
+            state->cards = temp;
+
+            // Fill in the card data
+            state->cards[state->cardCount].cardNumber = cardNumber;
+            state->cards[state->cardCount].hasAccess = (strcmp(accessStr, "Yes") == 0);
+            strncpy(state->cards[state->cardCount].dateAdded, 
+                    dateStr, 
+                    sizeof(state->cards[state->cardCount].dateAdded) - 1);
+            state->cards[state->cardCount].dateAdded[sizeof(state->cards[state->cardCount].dateAdded) - 1] = '\0';
+            
+            state->cardCount++;
+        }
+    }
+
+    fclose(file);
+    printf("Loaded %d cards from file.\n", state->cardCount);
+}
+
 
 void remoteOpenDoor(SystemState* state){
     int cardNumberToUse;
@@ -55,15 +123,8 @@ void listAllCards(SystemState* state) {
 }
 
 
-
-
 //Add/Remove Access
 void addCard(SystemState* state, int cardNumber) {
-    FILE* logFile = fopen("cards.txt", "w"); 
-    if (logFile == NULL) {
-        printf("Error: Unable to open log file.\n");
-        return;
-    }
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     
@@ -87,16 +148,16 @@ void addCard(SystemState* state, int cardNumber) {
 
     if (!cardExists) {
         // Allocate space for the new card
-        state->cards = realloc(state->cards, (state->cardCount + 1) * sizeof(Card));
-        if (state->cards == NULL) {
+        Card* temp = realloc(state->cards, (state->cardCount + 1) * sizeof(Card));
+        if (temp == NULL) {
             printf("Error: Unable to allocate memory for new card.\n");
-            fclose(logFile);
             return;
         }
+        state->cards = temp;
         
-        sprintf(state->cards[state->cardCount].dateAdded, "%04d-%02d-%02d-%02d", 
-                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour);
         // Add the new card
+        sprintf(state->cards[state->cardCount].dateAdded, "%04d-%02d-%02d-%02d:%02d", 
+                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
         state->cards[state->cardCount].cardNumber = cardNumber;
         state->cards[state->cardCount].hasAccess = true;
         state->cardCount++;
@@ -104,16 +165,10 @@ void addCard(SystemState* state, int cardNumber) {
                cardNumber, state->cards[state->cardCount - 1].dateAdded);
     }
 
-    // Write the current status of ALL cards to the file
-    for (int i = 0; i < state->cardCount; i++) {
-        fprintf(logFile, "Date: %s, Card: %d, Access: %s\n",
-                state->cards[i].dateAdded,
-                state->cards[i].cardNumber,
-                state->cards[i].hasAccess ? "Yes" : "No");
-    }
-    
-    fclose(logFile);
+    // Save cards to file after any changes
+    saveCardsToFile(state);
 }
+
 
 
 void removeAccess(SystemState* state, int cardNumber) {
@@ -161,6 +216,8 @@ void fakeCardScan(SystemState* state) {
 
 int main() {
     SystemState state = {NULL, 0, false}; 
+
+    loadCardsFromFile(&state);
 
     while(true) {
         showMenu();
