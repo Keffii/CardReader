@@ -8,7 +8,7 @@ void addRemoveMenu();
 typedef struct {
     int cardNumber;
     bool hasAccess;
-    char dateAdded[11];
+    char dateAdded[20];
 }Card;
 
 typedef struct{

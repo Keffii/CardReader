@@ -8,8 +8,7 @@
 #include "SafeInput.h"
 
 
-//Remote open door
-void opendoor(SystemState* state){
+void remoteOpenDoor(SystemState* state){
     int cardNumberToUse;
     printf("Enter the card number to use for opening the door: ");
     GetInputInt("", &cardNumberToUse);
@@ -38,15 +37,16 @@ void opendoor(SystemState* state){
     }
 }
 
-//List all cards
+
 void listAllCards(SystemState* state) {
-    printf("*** All cards in the system ***\n");
+    printf("*** All cards in the system ***\n\n");
     bool cardFound = false;
     for (int i = 0; i < state->cardCount; i++) {
         printf("*** Info about card ***\n");
         printf("Card Number: %d\n", state->cards[i].cardNumber);
         printf("Has Access: %s\n", state->cards[i].hasAccess ? "Yes" : "No");
         printf("Date Added: %s\n", state->cards[i].dateAdded);
+        printf("\n");
         cardFound = true;
     }
     if(!cardFound){
@@ -59,10 +59,19 @@ void listAllCards(SystemState* state) {
 
 //Add/Remove Access
 void addCard(SystemState* state, int cardNumber) {
+    FILE* logFile = fopen("cards.txt", "w"); 
+    if (logFile == NULL) {
+        printf("Error: Unable to open log file.\n");
+        return;
+    }
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    
     // Check if the card already exists
+    bool cardExists = false;
     for (int i = 0; i < state->cardCount; i++) {
         if (state->cards[i].cardNumber == cardNumber) {
-            // If card exists, check if it has access
+            cardExists = true;
             if (state->cards[i].hasAccess) {
                 // If card has access, remove access
                 state->cards[i].hasAccess = false;
@@ -72,28 +81,38 @@ void addCard(SystemState* state, int cardNumber) {
                 state->cards[i].hasAccess = true;
                 printf("Access granted to card number: %d\n", cardNumber);
             }
-            return;
+            break;
         }
     }
-    // Allocate space for the new card
-    state->cards = realloc(state->cards, (state->cardCount + 1) * sizeof(Card));
-    if (state->cards == NULL) {
-        printf("Error: Unable to allocate memory for new card.\n");
-        return;
+
+    if (!cardExists) {
+        // Allocate space for the new card
+        state->cards = realloc(state->cards, (state->cardCount + 1) * sizeof(Card));
+        if (state->cards == NULL) {
+            printf("Error: Unable to allocate memory for new card.\n");
+            fclose(logFile);
+            return;
+        }
+        
+        sprintf(state->cards[state->cardCount].dateAdded, "%04d-%02d-%02d-%02d", 
+                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour);
+        // Add the new card
+        state->cards[state->cardCount].cardNumber = cardNumber;
+        state->cards[state->cardCount].hasAccess = true;
+        state->cardCount++;
+        printf("New card %d added successfully with date %s.\n", 
+               cardNumber, state->cards[state->cardCount - 1].dateAdded);
     }
 
-
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    // Format the date as YYYY-MM-DD
-    sprintf(state->cards[state->cardCount].dateAdded, "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-
-    // Add the new card
-    state->cards[state->cardCount].cardNumber = cardNumber;
-    state->cards[state->cardCount].hasAccess = true;
-    state->cardCount++;
-
-    printf("New card %d added successfully with date %s.\n", cardNumber, state->cards[state->cardCount - 1].dateAdded);
+    // Write the current status of ALL cards to the file
+    for (int i = 0; i < state->cardCount; i++) {
+        fprintf(logFile, "Date: %s, Card: %d, Access: %s\n",
+                state->cards[i].dateAdded,
+                state->cards[i].cardNumber,
+                state->cards[i].hasAccess ? "Yes" : "No");
+    }
+    
+    fclose(logFile);
 }
 
 
@@ -114,8 +133,34 @@ void removeAccess(SystemState* state, int cardNumber) {
 
 }
 
+void fakeCardScan(SystemState* state) {
+    int scannedCardNumber;
+    printf("\n*** Card Scanner Simulation ***\n");
+    printf("Please scan your card (enter card number): ");
+    GetInputInt("", &scannedCardNumber);
+
+    bool cardFound = false;
+    for (int i = 0; i < state->cardCount; i++) {
+        if (state->cards[i].cardNumber == scannedCardNumber) {
+            cardFound = true;        
+            if (state->cards[i].hasAccess) {
+                printf("Card %d has access\n", scannedCardNumber);
+            }
+            else {
+                state->cards[i].hasAccess = false;
+                printf("Card %d has no access\n", scannedCardNumber);
+            }
+            break;
+        }
+    }
+    if (!cardFound) {
+        printf("Card not found\n");
+    }
+}
+
+
 int main() {
-    SystemState state = {NULL, 0, false}; // Initialize the SystemState struct
+    SystemState state = {NULL, 0, false}; 
 
     while(true) {
         showMenu();
@@ -125,7 +170,7 @@ int main() {
         switch (selection) {
             case 1:
                 printf("\n");
-                opendoor(&state);
+                remoteOpenDoor(&state);
                 break;
             case 2:
                 printf("\n");
@@ -139,7 +184,7 @@ int main() {
                 free(state.cards);
                 return 0;
             case 9:
-                // Fake card test scanning
+                fakeCardScan(&state);
                 break;
             default:
                 printf("Invalid selection. Please try again.\n");
@@ -182,15 +227,3 @@ void addRemoveMenu(SystemState* state){
         }
     }
 }
-
-
-
-// void createCard(Card *p) {
-//     printf("*** CREATE CARD ***\n");
-//     printf("Card Number: ");
-//     GetInputInt("", &p->cardNumber);
-//     p->hasAccess = true; // or set to false if needed
-//     printf("Date Added (YYYY-MM-DD): ");
-//     GetInput("", p->dateAdded, sizeof(p->dateAdded) - 1);
-// }
-
