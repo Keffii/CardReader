@@ -1,5 +1,5 @@
 PROG = main.exe 
-SRC = main.c SafeInput.c
+SRC = main.c safeinput.c card_system.c menu.c
 CFLAGS=-Wall -Werror -g
 LIBS = 
 all: $(PROG)
