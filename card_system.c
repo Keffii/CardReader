@@ -83,7 +83,7 @@ void loadCardsFromFile(SystemState* state) {
             state->cards[state->cardCount].dateAdded[i] = '\0';
             
             // Set access (if accessStr is "Yes", set true, otherwise false)
-            if (accessStr[0] == 'Y' && accessStr[1] == 'e' && accessStr[2] == 's') {
+            if (strcmp(accessStr, "Yes") == 0) {
                 state->cards[state->cardCount].hasAccess = true;
             } else {
                 state->cards[state->cardCount].hasAccess = false;
