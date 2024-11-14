@@ -101,7 +101,7 @@ void loadCardsFromFile(SystemState* state) {
 
 void remoteOpenDoor(SystemState* state) {
     int cardNumberToUse;
-    printf("Enter the card number to use for opening the door: ");
+    printf("Enter the card number to use for opening the door: \n");
     GetInputInt("", &cardNumberToUse);
 
     bool cardFound = false;
@@ -109,10 +109,15 @@ void remoteOpenDoor(SystemState* state) {
         if (state->cards[i].cardNumber == cardNumberToUse) {
             cardFound = true;
             if (state->cards[i].hasAccess && !state->isDoorOpen) {
-                printf("CURRENTLY LAMP IS: Green\n");
+                printf("CURRENTLY LAMP IS: ");
+                printf("\033[0;32mGreen\033[0m");
+                printf("\n\n");
+                // printf("CURRENTLY LAMP IS: Green\n");
                 state->isDoorOpen = true;
                 sleep(3);
-                printf("CURRENTLY LAMP IS: Red\n\n");
+                printf("CURRENTLY LAMP IS: ");
+                printf("\033[0;31mRed\033[0m");
+                printf("\n\n");
                 state->isDoorOpen = false;
             } else {
                 state->cards[i].hasAccess = false;
